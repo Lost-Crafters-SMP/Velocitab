@@ -225,7 +225,7 @@ public class MultiProxyManager {
                 player, MultiProxyMessageType.PLAYER_JOIN
         );
         publishAsync(CHANNEL_PLAYER_JOIN, message);
-        
+
         // Track initial state
         lastBroadcastState.put(player.getUniqueId(), buildStateHash(player));
     }
@@ -245,7 +245,7 @@ public class MultiProxyManager {
                 false, 0, System.currentTimeMillis()
         );
         publishAsync(CHANNEL_PLAYER_LEAVE, message);
-        
+
         // Clean up state tracking
         lastBroadcastState.remove(player.getUniqueId());
     }
@@ -273,7 +273,7 @@ public class MultiProxyManager {
                 player, MultiProxyMessageType.PLAYER_UPDATE
         );
         publishAsync(CHANNEL_PLAYER_UPDATE, message);
-        
+
         // Update last broadcast state
         lastBroadcastState.put(player.getUniqueId(), buildStateHash(player));
     }
