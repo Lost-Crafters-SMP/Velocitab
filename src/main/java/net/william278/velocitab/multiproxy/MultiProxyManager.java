@@ -309,15 +309,15 @@ public class MultiProxyManager {
         final Nametag nametag = player.getNametag(plugin);
         final String teamName = player.getTeamName(plugin);
         final String customName = player.getCustomName().orElse("");
-        
-        return String.format("%s|%s|%s|%s|%b|%d",
-                teamName != null ? teamName : "",
-                nametag.prefix() != null ? nametag.prefix() : "",
-                nametag.suffix() != null ? nametag.suffix() : "",
-                customName,
-                player.isVanished(),
-                player.getLatency()
-        );
+
+        return new StringBuilder()
+                .append(teamName != null ? teamName : "").append('|')
+                .append(nametag.prefix() != null ? nametag.prefix() : "").append('|')
+                .append(nametag.suffix() != null ? nametag.suffix() : "").append('|')
+                .append(customName).append('|')
+                .append(player.isVanished()).append('|')
+                .append(player.getLatency())
+                .toString();
     }
 
     /**
