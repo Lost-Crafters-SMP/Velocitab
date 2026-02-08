@@ -87,6 +87,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
     private PacketEventManager packetEventManager;
     private PluginMessageAPI pluginMessageAPI;
     private PlaceholderManager placeholderManager;
+    private net.william278.velocitab.multiproxy.MultiProxyBroker multiProxyBroker;
     @Setter
     private Toilet toilet;
 
@@ -110,6 +111,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
         checkForUpdates();
         prepareAPI();
         prepareChannelManager();
+        prepareMultiProxyBroker();
         initializeToilet();
         DebugSystem.initializeTask(this);
         logger.info("Successfully enabled Velocitab");
@@ -119,6 +121,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
     public void onProxyShutdown(@NotNull ProxyShutdownEvent event) {
         disableScoreboardManager();
         getLuckPermsHook().ifPresent(LuckPermsHook::closeEvent);
+        disconnectMultiProxyBroker();
         unregisterAPI();
         logger.info("Successfully disabled Velocitab");
     }
@@ -143,6 +146,37 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
 
     private void preparePlaceholderManager() {
         this.placeholderManager = new PlaceholderManager(this);
+    }
+
+    private void prepareMultiProxyBroker() {
+        if (!settings.isMultiProxyEnabled()) {
+            return;
+        }
+
+        // Auto-generate proxyId if blank
+        String proxyId = settings.getProxyId();
+        if (proxyId == null || proxyId.isBlank()) {
+            proxyId = java.util.UUID.randomUUID().toString();
+            logger.info("Auto-generated proxy ID: {}", proxyId);
+        }
+
+        try {
+            multiProxyBroker = new net.william278.velocitab.multiproxy.RedisMultiProxyBroker(
+                    proxyId,
+                    settings.getRedis(),
+                    logger
+            );
+            multiProxyBroker.connect();
+            logger.info("Multi-proxy support enabled with ID: {}", proxyId);
+        } catch (Exception e) {
+            logger.error("Failed to initialize multi-proxy broker", e);
+        }
+    }
+
+    private void disconnectMultiProxyBroker() {
+        if (multiProxyBroker != null) {
+            multiProxyBroker.disconnect();
+        }
     }
 
     @Override
