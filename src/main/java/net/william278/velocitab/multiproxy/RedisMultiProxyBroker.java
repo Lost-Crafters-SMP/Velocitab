@@ -104,6 +104,11 @@ public class RedisMultiProxyBroker implements MultiProxyBroker {
     public void subscribe(@NotNull String channel, @NotNull Consumer<String> handler) {
         handlers.put(channel, handler);
         logger.debug("Subscribed to channel: {}", channel);
+        
+        // Start subscriber thread if not already running and we're connected
+        if (running && (subscriberThread == null || !subscriberThread.isAlive())) {
+            startSubscriberThread();
+        }
     }
 
     @Override
