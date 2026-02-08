@@ -55,6 +55,7 @@ public class MultiProxyManager {
     private final Logger logger;
     private final Map<String, Long> proxyHeartbeats;
     private final Map<UUID, Long> messageTimestamps;
+    private final Map<UUID, String> lastBroadcastState;
 
     public MultiProxyManager(@NotNull Velocitab plugin,
                              @NotNull MultiProxyBroker broker,
@@ -65,6 +66,7 @@ public class MultiProxyManager {
         this.logger = plugin.getLogger();
         this.proxyHeartbeats = Maps.newConcurrentMap();
         this.messageTimestamps = Maps.newConcurrentMap();
+        this.lastBroadcastState = Maps.newConcurrentMap();
     }
 
     /**
@@ -74,6 +76,7 @@ public class MultiProxyManager {
     public void initialize() {
         subscribeToChannels();
         startHeartbeat();
+        startPlaceholderRefreshTask();
         logger.info("Multi-proxy manager initialized");
     }
 
@@ -135,6 +138,41 @@ public class MultiProxyManager {
     }
 
     /**
+     * Start the placeholder refresh task that periodically re-broadcasts
+     * placeholder data for all local players to ensure consistency.
+     */
+    private void startPlaceholderRefreshTask() {
+        final int refreshInterval = plugin.getSettings().getMultiProxyPlaceholderRefreshInterval();
+        if (refreshInterval <= 0) {
+            logger.info("Placeholder refresh task disabled (interval set to 0 or less)");
+            return;
+        }
+
+        plugin.getServer().getScheduler()
+                .buildTask(plugin, this::refreshAllLocalPlayers)
+                .repeat(refreshInterval, TimeUnit.SECONDS)
+                .schedule();
+        logger.info("Placeholder refresh task scheduled to run every {} seconds", refreshInterval);
+    }
+
+    /**
+     * Refresh placeholder data for all local players by broadcasting
+     * updates only if their state has changed since the last broadcast.
+     */
+    private void refreshAllLocalPlayers() {
+        int broadcastCount = 0;
+        // Create a snapshot to avoid ConcurrentModificationException
+        for (TabPlayer player : plugin.getTabList().getPlayers().values().toArray(new TabPlayer[0])) {
+            if (broadcastUpdateIfChanged(player)) {
+                broadcastCount++;
+            }
+        }
+        if (broadcastCount > 0) {
+            logger.debug("Refreshed {} local players with changed state", broadcastCount);
+        }
+    }
+
+    /**
      * Send a heartbeat message to other proxies.
      */
     public void sendHeartbeat() {
@@ -188,6 +226,9 @@ public class MultiProxyManager {
                 player, MultiProxyMessageType.PLAYER_JOIN
         );
         publishAsync(CHANNEL_PLAYER_JOIN, message);
+
+        // Track initial state
+        lastBroadcastState.put(player.getUniqueId(), buildStateHash(player));
     }
 
     /**
@@ -205,6 +246,9 @@ public class MultiProxyManager {
                 false, 0, System.currentTimeMillis()
         );
         publishAsync(CHANNEL_PLAYER_LEAVE, message);
+
+        // Clean up state tracking
+        lastBroadcastState.remove(player.getUniqueId());
     }
 
     /**
@@ -230,6 +274,52 @@ public class MultiProxyManager {
                 player, MultiProxyMessageType.PLAYER_UPDATE
         );
         publishAsync(CHANNEL_PLAYER_UPDATE, message);
+
+        // Update last broadcast state
+        lastBroadcastState.put(player.getUniqueId(), buildStateHash(player));
+    }
+
+    /**
+     * Broadcast a player update event only if the player's state has changed
+     * since the last broadcast. Used for periodic refresh optimization.
+     *
+     * @param player The player to check and potentially broadcast
+     * @return true if an update was broadcast, false otherwise
+     */
+    private boolean broadcastUpdateIfChanged(@NotNull TabPlayer player) {
+        final String currentState = buildStateHash(player);
+        final String previousState = lastBroadcastState.get(player.getUniqueId());
+
+        if (!Objects.equals(currentState, previousState)) {
+            broadcastUpdate(player);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Build a hash string representing the current state of a player's
+     * placeholder values and vanish state for change detection.
+     *
+     * @param player The player to hash
+     * @return A string representing the player's current state
+     */
+    @NotNull
+    private String buildStateHash(@NotNull TabPlayer player) {
+        final Nametag nametag = player.getNametag(plugin);
+        final String teamName = player.getTeamName(plugin);
+        final String customName = player.getCustomName().orElse("");
+
+        // Use a more robust delimiter that's unlikely to appear in player data
+        final char delimiter = '\u001F'; // ASCII Unit Separator
+        return new StringBuilder()
+                .append(Objects.toString(teamName, "")).append(delimiter)
+                .append(Objects.toString(nametag.prefix(), "")).append(delimiter)
+                .append(Objects.toString(nametag.suffix(), "")).append(delimiter)
+                .append(customName).append(delimiter)
+                .append(player.isVanished()).append(delimiter)
+                .append(player.getLatency())
+                .toString();
     }
 
     /**
