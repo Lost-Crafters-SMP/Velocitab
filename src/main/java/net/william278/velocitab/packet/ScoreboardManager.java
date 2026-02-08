@@ -589,7 +589,7 @@ public class ScoreboardManager {
         }
 
         // Get all remote players in the same group
-        final java.util.List<net.william278.velocitab.multiproxy.RemoteTabPlayer> remotePlayers =
+        final List<net.william278.velocitab.multiproxy.RemoteTabPlayer> remotePlayers =
                 tabPlayer.getGroup().getRemotePlayers(plugin, tabPlayer);
 
         // Send team packet for each remote player

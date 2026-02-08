@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -416,7 +417,7 @@ public class MultiProxyManager {
 
         // Update scoreboard team if team name changed
         final String newTeamName = remotePlayer.getTeamName(plugin);
-        if (oldTeamName != null && !oldTeamName.equals(newTeamName)) {
+        if (!Objects.equals(oldTeamName, newTeamName)) {
             plugin.getScoreboardManager().updateRemoteTeam(remotePlayer);
         }
 
@@ -478,7 +479,7 @@ public class MultiProxyManager {
 
             // Update team if team name or nametag changed
             final String newTeamName = remotePlayer.getTeamName(plugin);
-            if (oldTeamName != null && !oldTeamName.equals(newTeamName)) {
+            if (!Objects.equals(oldTeamName, newTeamName)) {
                 plugin.getScoreboardManager().updateRemoteTeam(remotePlayer);
             }
         }
