@@ -98,6 +98,15 @@ public class Settings implements ConfigValidator {
     @Comment("Whether to enable relational placeholders. With an high amount of players, this could cause lag.")
     private boolean enableRelationalPlaceholders = false;
 
+    @Comment("Whether to enable multi-proxy support (requires Redis)")
+    private boolean multiProxyEnabled = false;
+
+    @Comment("Unique identifier for this proxy instance. Leave blank to auto-generate a UUID on startup.")
+    private String proxyId = "";
+
+    @Comment("Redis connection settings for multi-proxy support")
+    private RedisSettings redis = new RedisSettings();
+
     @Comment({"A list of links that will be sent to display on player pause menus (Minecraft 1.21+ clients only).",
             "• Labels can be fully custom or built-in (one of 'bug_report', 'community_guidelines', 'support', 'status',",
             "  'feedback', 'community', 'website', 'forums', 'news', or 'announcements').",
