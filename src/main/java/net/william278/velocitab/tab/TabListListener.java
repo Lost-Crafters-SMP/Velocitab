@@ -174,11 +174,7 @@ public class TabListListener {
                         plugin.getMultiProxyManager().broadcastJoin(tabPlayer);
                     } else {
                         // Server switch - broadcast switch
-                        plugin.getMultiProxyManager().broadcastSwitch(
-                                tabPlayer,
-                                serverName,
-                                group
-                        );
+                        plugin.getMultiProxyManager().broadcastSwitch(tabPlayer);
                     }
                 });
             }).delay(600, TimeUnit.MILLISECONDS).schedule();
@@ -213,12 +209,12 @@ public class TabListListener {
     private void proxyReload(@NotNull ProxyReloadEvent event) {
         plugin.loadConfigs();
         tabList.reloadUpdate();
-        
+
         // Re-broadcast all local players after reload
         if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
             plugin.getMultiProxyManager().broadcastAllLocalPlayers();
         }
-        
+
         plugin.log("Velocitab has been reloaded!");
     }
 

@@ -205,13 +205,9 @@ public class MultiProxyManager {
     /**
      * Broadcast a server switch event to other proxies.
      *
-     * @param player    The player who switched servers
-     * @param newServer The new server name
-     * @param newGroup  The new group
+     * @param player The player who switched servers
      */
-    public void broadcastSwitch(@NotNull TabPlayer player,
-                                @NotNull String newServer,
-                                @NotNull Group newGroup) {
+    public void broadcastSwitch(@NotNull TabPlayer player) {
         final MultiProxyMessage message = buildPlayerMessage(
                 player, MultiProxyMessageType.PLAYER_SWITCH
         );
