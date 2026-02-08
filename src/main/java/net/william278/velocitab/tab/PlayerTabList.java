@@ -791,6 +791,10 @@ public class PlayerTabList {
 
         // Add to all local players in the same group
         remoteGroup.getTabPlayers(plugin).forEach(localPlayer -> {
+            if (!localPlayer.getPlayer().isActive()) {
+                return;
+            }
+
             // Check same-server filtering
             if (remoteGroup.onlyListPlayersInSameServer() &&
                     !localPlayer.getServerName().equalsIgnoreCase(remote.getServerName())) {
@@ -819,6 +823,7 @@ public class PlayerTabList {
 
     /**
      * Remove a remote player's entry from all local players' TAB lists.
+     * Iterates all players since the remote player's group may have changed or be unknown.
      *
      * @param uuid The UUID of the remote player to remove
      */
@@ -827,7 +832,7 @@ public class PlayerTabList {
             return;
         }
 
-        // Remove from all local players
+        // Remove from all local players (must iterate all since group may be unknown)
         players.values().forEach(localPlayer -> {
             if (localPlayer.getPlayer().isActive()) {
                 localPlayer.getPlayer().getTabList().removeEntry(uuid);
@@ -851,6 +856,10 @@ public class PlayerTabList {
         final Component displayName = formatRemoteDisplayName(remote);
 
         remoteGroup.getTabPlayers(plugin).forEach(localPlayer -> {
+            if (!localPlayer.getPlayer().isActive()) {
+                return;
+            }
+
             // Check same-server filtering
             if (remoteGroup.onlyListPlayersInSameServer() &&
                     !localPlayer.getServerName().equalsIgnoreCase(remote.getServerName())) {

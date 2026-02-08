@@ -225,9 +225,9 @@ public record Group(
         }
 
         final Collection<RemoteTabPlayer> remotePlayers = plugin.getRemotePlayerRegistry().getRemotePlayersInGroup(this);
-        return Lists.newArrayList(remotePlayers.stream()
+        return remotePlayers.stream()
                 .filter(RemoteTabPlayer::isLoaded)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
     }
 
     /**
@@ -246,17 +246,17 @@ public record Group(
 
         if (plugin.getSettings().isShowAllPlayersFromAllGroups()) {
             // Show all remote players regardless of group
-            return Lists.newArrayList(plugin.getRemotePlayerRegistry().getAllRemotePlayers().stream()
+            return plugin.getRemotePlayerRegistry().getAllRemotePlayers().stream()
                     .filter(RemoteTabPlayer::isLoaded)
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList());
         }
 
         if (onlyListPlayersInSameServer) {
             // Only show remote players on the same backend server
-            return Lists.newArrayList(plugin.getRemotePlayerRegistry().getRemotePlayersInGroup(this).stream()
+            return plugin.getRemotePlayerRegistry().getRemotePlayersInGroup(this).stream()
                     .filter(RemoteTabPlayer::isLoaded)
                     .filter(remote -> remote.getServerName().equalsIgnoreCase(tabPlayer.getServerName()))
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList());
         }
 
         return getRemotePlayers(plugin);
