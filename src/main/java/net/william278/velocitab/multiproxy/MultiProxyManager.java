@@ -161,7 +161,8 @@ public class MultiProxyManager {
      */
     private void refreshAllLocalPlayers() {
         int broadcastCount = 0;
-        for (TabPlayer player : plugin.getTabList().getPlayers().values()) {
+        // Create a snapshot to avoid ConcurrentModificationException
+        for (TabPlayer player : plugin.getTabList().getPlayers().values().toArray(new TabPlayer[0])) {
             if (broadcastUpdateIfChanged(player)) {
                 broadcastCount++;
             }
@@ -288,8 +289,8 @@ public class MultiProxyManager {
     private boolean broadcastUpdateIfChanged(@NotNull TabPlayer player) {
         final String currentState = buildStateHash(player);
         final String previousState = lastBroadcastState.get(player.getUniqueId());
-        
-        if (!currentState.equals(previousState)) {
+
+        if (!Objects.equals(currentState, previousState)) {
             broadcastUpdate(player);
             return true;
         }
