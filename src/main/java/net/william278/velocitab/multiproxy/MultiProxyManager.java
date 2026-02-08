@@ -313,9 +313,9 @@ public class MultiProxyManager {
         // Use a more robust delimiter that's unlikely to appear in player data
         final char delimiter = '\u001F'; // ASCII Unit Separator
         return new StringBuilder()
-                .append(teamName != null ? teamName : "").append(delimiter)
-                .append(nametag.prefix() != null ? nametag.prefix() : "").append(delimiter)
-                .append(nametag.suffix() != null ? nametag.suffix() : "").append(delimiter)
+                .append(Objects.toString(teamName, "")).append(delimiter)
+                .append(Objects.toString(nametag.prefix(), "")).append(delimiter)
+                .append(Objects.toString(nametag.suffix(), "")).append(delimiter)
                 .append(customName).append(delimiter)
                 .append(player.isVanished()).append(delimiter)
                 .append(player.getLatency())
