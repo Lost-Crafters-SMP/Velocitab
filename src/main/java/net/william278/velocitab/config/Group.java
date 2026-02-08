@@ -245,7 +245,7 @@ public record Group(
         }
 
         if (plugin.getSettings().isShowAllPlayersFromAllGroups()) {
-            // Show all remote players regardless of group
+            // Show all remote players regardless of group or server (overrides same-server filtering)
             return plugin.getRemotePlayerRegistry().getAllRemotePlayers().stream()
                     .filter(RemoteTabPlayer::isLoaded)
                     .collect(Collectors.toList());
