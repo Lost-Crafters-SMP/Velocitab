@@ -39,7 +39,7 @@ import java.util.UUID;
 
 @Getter
 @ToString
-public final class TabPlayer implements Comparable<TabPlayer> {
+public final class TabPlayer implements TabListMember, Comparable<TabPlayer> {
 
     private final Velocitab plugin;
     private final Player player;
@@ -200,6 +200,33 @@ public final class TabPlayer implements Comparable<TabPlayer> {
      */
     public Optional<String> getCustomName() {
         return Optional.ofNullable(customName);
+    }
+
+    @Override
+    @NotNull
+    public UUID getUniqueId() {
+        return player.getUniqueId();
+    }
+
+    @Override
+    @NotNull
+    public String getUsername() {
+        return player.getUsername();
+    }
+
+    @Override
+    public boolean isVanished() {
+        return plugin.getVanishManager().isVanished(player.getUsername());
+    }
+
+    @Override
+    public boolean isRemote() {
+        return false;
+    }
+
+    @Override
+    public int getLatency() {
+        return (int) player.getPing();
     }
 
     @Override
