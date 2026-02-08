@@ -144,7 +144,7 @@ public class MultiProxyManager {
     private void startPlaceholderRefreshTask() {
         final int refreshInterval = plugin.getSettings().getMultiProxyPlaceholderRefreshInterval();
         if (refreshInterval <= 0) {
-            logger.info("Placeholder refresh task disabled (interval set to 0)");
+            logger.info("Placeholder refresh task disabled (interval set to 0 or less)");
             return;
         }
 
@@ -310,7 +310,7 @@ public class MultiProxyManager {
         final String customName = player.getCustomName().orElse("");
         
         return String.format("%s|%s|%s|%s|%b|%d",
-                teamName,
+                teamName != null ? teamName : "",
                 nametag.prefix() != null ? nametag.prefix() : "",
                 nametag.suffix() != null ? nametag.suffix() : "",
                 customName,

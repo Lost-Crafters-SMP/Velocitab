@@ -107,7 +107,7 @@ public class Settings implements ConfigValidator {
     @Comment("Redis connection settings for multi-proxy support")
     private RedisSettings redis = new RedisSettings();
 
-    @Comment("How often (in seconds) to refresh placeholder data for remote players across proxies. (0 to disable)")
+    @Comment("How often (in seconds) to refresh placeholder data for local players across proxies. (0 to disable)")
     private int multiProxyPlaceholderRefreshInterval = 30;
 
     @Comment({"A list of links that will be sent to display on player pause menus (Minecraft 1.21+ clients only).",
