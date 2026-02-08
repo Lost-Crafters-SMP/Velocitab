@@ -143,6 +143,15 @@ public class PlayerTabList {
             loadPlayer(p, group.get(), 400);
         });
 
+        // Load remote players if multi-proxy is enabled
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getRemotePlayerRegistry() != null) {
+            plugin.getRemotePlayerRegistry().getAllRemotePlayers().forEach(remote -> {
+                if (remote.isLoaded()) {
+                    addRemoteEntry(remote);
+                }
+            });
+        }
+
         reloadUpdate();
     }
 
@@ -183,6 +192,14 @@ public class PlayerTabList {
             serversInGroup.remove(server.get().getServer());
             serversInGroup.forEach(s -> s.getPlayersConnected().forEach(t -> t.getTabList().removeEntry(p.getUniqueId())));
         });
+
+        // Remove all remote player entries from local players' TAB lists
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getRemotePlayerRegistry() != null) {
+            plugin.getRemotePlayerRegistry().getAllRemotePlayers().forEach(remote ->
+                    removeRemoteEntry(remote.getUniqueId())
+            );
+        }
+
         plugin.getPacketEventManager().removeAllPlayers();
     }
 
@@ -223,6 +240,32 @@ public class PlayerTabList {
         tabPlayer.setLoaded(true);
         final List<TabPlayer> tabPlayers = group.getTabPlayers(plugin, tabPlayer);
         updateTabListOnJoin(tabPlayer, group, tabPlayers, isVanished);
+
+        // Add remote players to the joining player's TAB list
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getRemotePlayerRegistry() != null) {
+            final List<net.william278.velocitab.multiproxy.RemoteTabPlayer> remotePlayers =
+                    group.getRemotePlayers(plugin, tabPlayer);
+
+            remotePlayers.forEach(remote -> {
+                // Check vanish visibility
+                if (remote.isVanished() && !plugin.getVanishManager().canSee(joined.getUsername(), remote.getUsername())) {
+                    return;
+                }
+
+                // Create and add the entry
+                final Component displayName = formatRemoteDisplayName(remote);
+                final com.velocitypowered.api.util.GameProfile gameProfile =
+                        com.velocitypowered.api.util.GameProfile.forOfflinePlayer(remote.getUsername(), remote.getUniqueId());
+                final TabListEntry entry = TabListEntry.builder()
+                        .profile(gameProfile)
+                        .displayName(displayName)
+                        .latency(Math.max(remote.getLatency(), 0))
+                        .tabList(joined.getTabList())
+                        .showHat(true)
+                        .build();
+                joined.getTabList().addEntry(entry);
+            });
+        }
     }
 
     private void updateTabListOnJoin(@NotNull TabPlayer tabPlayer, @NotNull Group group,
@@ -730,5 +773,151 @@ public class PlayerTabList {
      */
     public void removeOfflinePlayer(@NotNull Player player) {
         players.remove(player.getUniqueId());
+    }
+
+    /**
+     * Add a remote player's entry to all relevant local players' TAB lists.
+     * Respects vanish visibility and same-server filtering.
+     *
+     * @param remote The remote player to add
+     */
+    public void addRemoteEntry(@NotNull net.william278.velocitab.multiproxy.RemoteTabPlayer remote) {
+        if (!plugin.getSettings().isMultiProxyEnabled()) {
+            return;
+        }
+
+        final Group remoteGroup = remote.getGroup();
+        final boolean isRemoteVanished = remote.isVanished();
+
+        // Add to all local players in the same group
+        remoteGroup.getTabPlayers(plugin).forEach(localPlayer -> {
+            if (!localPlayer.getPlayer().isActive()) {
+                return;
+            }
+
+            // Check same-server filtering
+            if (remoteGroup.onlyListPlayersInSameServer() &&
+                    !localPlayer.getServerName().equalsIgnoreCase(remote.getServerName())) {
+                return;
+            }
+
+            // Check vanish visibility
+            if (isRemoteVanished && !plugin.getVanishManager().canSee(localPlayer.getPlayer().getUsername(), remote.getUsername())) {
+                return;
+            }
+
+            // Create and add the entry
+            final Component displayName = formatRemoteDisplayName(remote);
+            final com.velocitypowered.api.util.GameProfile gameProfile =
+                    com.velocitypowered.api.util.GameProfile.forOfflinePlayer(remote.getUsername(), remote.getUniqueId());
+            final TabListEntry entry = TabListEntry.builder()
+                    .profile(gameProfile)
+                    .displayName(displayName)
+                    .latency(Math.max(remote.getLatency(), 0))
+                    .tabList(localPlayer.getPlayer().getTabList())
+                    .showHat(true)
+                    .build();
+            localPlayer.getPlayer().getTabList().addEntry(entry);
+        });
+    }
+
+    /**
+     * Remove a remote player's entry from all local players' TAB lists.
+     * Iterates all players since the remote player's group may have changed or be unknown.
+     *
+     * @param uuid The UUID of the remote player to remove
+     */
+    public void removeRemoteEntry(@NotNull UUID uuid) {
+        if (!plugin.getSettings().isMultiProxyEnabled()) {
+            return;
+        }
+
+        // Remove from all local players (must iterate all since group may be unknown)
+        players.values().forEach(localPlayer -> {
+            if (localPlayer.getPlayer().isActive()) {
+                localPlayer.getPlayer().getTabList().removeEntry(uuid);
+            }
+        });
+    }
+
+    /**
+     * Update a remote player's display name in all local players' TAB lists.
+     * If the entry doesn't exist, it will be added.
+     *
+     * @param remote The remote player to update
+     */
+    public void updateRemoteEntry(@NotNull net.william278.velocitab.multiproxy.RemoteTabPlayer remote) {
+        if (!plugin.getSettings().isMultiProxyEnabled()) {
+            return;
+        }
+
+        final Group remoteGroup = remote.getGroup();
+        final boolean isRemoteVanished = remote.isVanished();
+        final Component displayName = formatRemoteDisplayName(remote);
+
+        remoteGroup.getTabPlayers(plugin).forEach(localPlayer -> {
+            if (!localPlayer.getPlayer().isActive()) {
+                return;
+            }
+
+            // Check same-server filtering
+            if (remoteGroup.onlyListPlayersInSameServer() &&
+                    !localPlayer.getServerName().equalsIgnoreCase(remote.getServerName())) {
+                return;
+            }
+
+            // Check vanish visibility
+            if (isRemoteVanished && !plugin.getVanishManager().canSee(localPlayer.getPlayer().getUsername(), remote.getUsername())) {
+                localPlayer.getPlayer().getTabList().removeEntry(remote.getUniqueId());
+                return;
+            }
+
+            // Update or add the entry
+            localPlayer.getPlayer().getTabList().getEntry(remote.getUniqueId())
+                    .ifPresentOrElse(
+                            entry -> entry.setDisplayName(displayName),
+                            () -> {
+                                // Entry doesn't exist, add it
+                                final com.velocitypowered.api.util.GameProfile gameProfile =
+                                        com.velocitypowered.api.util.GameProfile.forOfflinePlayer(remote.getUsername(), remote.getUniqueId());
+                                final TabListEntry entry = TabListEntry.builder()
+                                        .profile(gameProfile)
+                                        .displayName(displayName)
+                                        .latency(Math.max(remote.getLatency(), 0))
+                                        .tabList(localPlayer.getPlayer().getTabList())
+                                        .showHat(true)
+                                        .build();
+                                localPlayer.getPlayer().getTabList().addEntry(entry);
+                            }
+                    );
+        });
+    }
+
+    /**
+     * Format a display name for a remote player using the group's format string
+     * and the remote player's pre-resolved placeholder values.
+     *
+     * @param remote The remote player
+     * @return The formatted display name component
+     */
+    @NotNull
+    public Component formatRemoteDisplayName(@NotNull net.william278.velocitab.multiproxy.RemoteTabPlayer remote) {
+        String format = remote.getGroup().format();
+
+        // Replace placeholders with remote player's stored values
+        format = format.replace("%username%", remote.getUsername())
+                .replace("%player%", remote.getUsername())
+                .replace("%server%", remote.getServerName());
+
+        // Apply prefix and suffix if available
+        if (remote.getPrefix() != null) {
+            format = format.replace("%prefix%", remote.getPrefix());
+        }
+        if (remote.getSuffix() != null) {
+            format = format.replace("%suffix%", remote.getSuffix());
+        }
+
+        // Use the plugin's formatter to deserialize the text to a Component
+        return plugin.getFormatter().deserialize(format);
     }
 }

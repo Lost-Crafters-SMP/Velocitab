@@ -23,7 +23,9 @@ import com.google.common.collect.Lists;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.william278.velocitab.Velocitab;
+import net.william278.velocitab.multiproxy.RemoteTabPlayer;
 import net.william278.velocitab.placeholder.PlaceholderReplacement;
+import net.william278.velocitab.player.TabListMember;
 import net.william278.velocitab.player.TabPlayer;
 import net.william278.velocitab.tab.Nametag;
 import net.william278.velocitab.util.StringUtil;
@@ -31,6 +33,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +42,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public record Group(
         String name,
@@ -205,5 +209,93 @@ public record Group(
         }
 
         return name.equals(group.name);
+    }
+
+    /**
+     * Get all remote players in this group from the RemotePlayerRegistry.
+     * Only returns players if multi-proxy is enabled.
+     *
+     * @param plugin The plugin instance
+     * @return List of remote players in this group
+     */
+    @NotNull
+    public List<RemoteTabPlayer> getRemotePlayers(@NotNull Velocitab plugin) {
+        if (!plugin.getSettings().isMultiProxyEnabled() || plugin.getRemotePlayerRegistry() == null) {
+            return Lists.newArrayList();
+        }
+
+        final Collection<RemoteTabPlayer> remotePlayers = plugin.getRemotePlayerRegistry().getRemotePlayersInGroup(this);
+        return remotePlayers.stream()
+                .filter(RemoteTabPlayer::isLoaded)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get remote players visible to a specific local player.
+     * Applies same-server filtering if configured.
+     *
+     * @param plugin    The plugin instance
+     * @param tabPlayer The local player viewing the list
+     * @return List of remote players visible to this player
+     */
+    @NotNull
+    public List<RemoteTabPlayer> getRemotePlayers(@NotNull Velocitab plugin, @NotNull TabPlayer tabPlayer) {
+        if (!plugin.getSettings().isMultiProxyEnabled() || plugin.getRemotePlayerRegistry() == null) {
+            return Lists.newArrayList();
+        }
+
+        if (plugin.getSettings().isShowAllPlayersFromAllGroups()) {
+            // Show all remote players regardless of group or server (overrides same-server filtering)
+            return plugin.getRemotePlayerRegistry().getAllRemotePlayers().stream()
+                    .filter(RemoteTabPlayer::isLoaded)
+                    .collect(Collectors.toList());
+        }
+
+        if (onlyListPlayersInSameServer) {
+            // Only show remote players on the same backend server
+            return plugin.getRemotePlayerRegistry().getRemotePlayersInGroup(this).stream()
+                    .filter(RemoteTabPlayer::isLoaded)
+                    .filter(remote -> remote.getServerName().equalsIgnoreCase(tabPlayer.getServerName()))
+                    .collect(Collectors.toList());
+        }
+
+        return getRemotePlayers(plugin);
+    }
+
+    /**
+     * Get all members (local TabPlayers and remote RemoteTabPlayers) in this group.
+     * Combines local and remote players into a unified list.
+     *
+     * @param plugin The plugin instance
+     * @return List of all TAB list members in this group
+     */
+    @NotNull
+    public List<TabListMember> getAllMembers(@NotNull Velocitab plugin) {
+        return getAllMembers(plugin, null);
+    }
+
+    /**
+     * Get all members (local TabPlayers and remote RemoteTabPlayers) visible to a specific player.
+     * Applies same-server filtering if configured.
+     *
+     * @param plugin    The plugin instance
+     * @param tabPlayer The local player viewing the list (null for all members)
+     * @return List of all TAB list members visible to this player
+     */
+    @NotNull
+    public List<TabListMember> getAllMembers(@NotNull Velocitab plugin, @Nullable TabPlayer tabPlayer) {
+        if (tabPlayer == null) {
+            // Return all members without filtering
+            return Stream.concat(
+                    getTabPlayers(plugin).stream(),
+                    getRemotePlayers(plugin).stream()
+            ).collect(Collectors.toList());
+        }
+
+        // Return members visible to this specific player
+        return Stream.concat(
+                getTabPlayers(plugin, tabPlayer).stream(),
+                getRemotePlayers(plugin, tabPlayer).stream()
+        ).collect(Collectors.toList());
     }
 }
