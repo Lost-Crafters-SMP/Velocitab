@@ -53,6 +53,7 @@ dependencies {
     implementation 'org.mvel:mvel2:2.5.2.Final'
     implementation 'net.jodah:expiringmap:0.5.11'
     implementation 'net.william278.toilet:toilet-velocity:1.0.14'
+    implementation 'redis.clients:jedis:5.2.0'
 
     annotationProcessor 'org.projectlombok:lombok:1.18.38'
 }
@@ -117,6 +118,8 @@ shadowJar {
     relocate 'org.apache.commons.logging', 'net.william278.velocitab.libraries.commons.logging'
     relocate 'net.jodah.expiringmap', 'net.william278.velocitab.libraries.expiringmap'
     relocate 'org.mvel2', 'net.william278.velocitab.libraries.mvel2'
+    relocate 'redis.clients.jedis', 'net.william278.velocitab.libraries.jedis'
+    relocate 'org.apache.commons.pool2', 'net.william278.velocitab.libraries.commons.pool2'
 
     destinationDirectory.set(file("$rootDir/target"))
     archiveClassifier.set('')
