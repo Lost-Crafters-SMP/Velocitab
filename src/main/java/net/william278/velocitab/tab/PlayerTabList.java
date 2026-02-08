@@ -908,7 +908,7 @@ public class PlayerTabList {
             format = format.replace("%suffix%", remote.getSuffix());
         }
 
-        // Use the plugin's formatter to convert to Component
-        return plugin.getFormatter().format(format);
+        // Use the plugin's formatter to deserialize the text to a Component
+        return plugin.getFormatter().deserialize(format);
     }
 }
