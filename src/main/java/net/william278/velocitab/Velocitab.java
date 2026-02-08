@@ -90,6 +90,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
     private PlaceholderManager placeholderManager;
     private RemotePlayerRegistry remotePlayerRegistry;
     private net.william278.velocitab.multiproxy.MultiProxyBroker multiProxyBroker;
+    private net.william278.velocitab.multiproxy.MultiProxyManager multiProxyManager;
     @Setter
     private Toilet toilet;
 
@@ -115,6 +116,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
         prepareAPI();
         prepareChannelManager();
         prepareMultiProxyBroker();
+        prepareMultiProxyManager();
         initializeToilet();
         DebugSystem.initializeTask(this);
         logger.info("Successfully enabled Velocitab");
@@ -122,6 +124,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
 
     @Subscribe
     public void onProxyShutdown(@NotNull ProxyShutdownEvent event) {
+        shutdownMultiProxyManager();
         disableScoreboardManager();
         getLuckPermsHook().ifPresent(LuckPermsHook::closeEvent);
         disconnectMultiProxyBroker();
@@ -182,9 +185,42 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
         }
     }
 
+    private void prepareMultiProxyManager() {
+        if (!settings.isMultiProxyEnabled() || multiProxyBroker == null) {
+            return;
+        }
+
+        try {
+            multiProxyManager = new net.william278.velocitab.multiproxy.MultiProxyManager(
+                    this,
+                    multiProxyBroker,
+                    remotePlayerRegistry
+            );
+            multiProxyManager.initialize();
+        } catch (Exception e) {
+            logger.error("Failed to initialize multi-proxy manager", e);
+        }
+    }
+
     private void disconnectMultiProxyBroker() {
         if (multiProxyBroker != null) {
             multiProxyBroker.disconnect();
+        }
+    }
+
+    private void shutdownMultiProxyManager() {
+        if (multiProxyManager != null) {
+            // Broadcast leave for all local players before shutdown
+            if (tabList != null) {
+                tabList.getPlayers().values().forEach(player -> {
+                    try {
+                        multiProxyManager.broadcastLeave(player);
+                    } catch (Exception e) {
+                        logger.error("Failed to broadcast leave for player {}", player.getUsername(), e);
+                    }
+                });
+            }
+            multiProxyManager.shutdown();
         }
     }
 
@@ -197,6 +233,10 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
     @Override
     public ScoreboardManager getScoreboardManager() {
         return scoreboardManager;
+    }
+
+    public net.william278.velocitab.multiproxy.MultiProxyManager getMultiProxyManager() {
+        return multiProxyManager;
     }
 
     private void prepareAPI() {

@@ -75,6 +75,11 @@ public class VanishManager {
 
         plugin.getTabList().getVanishTabList().vanishPlayer(tabPlayer.get());
         plugin.getScoreboardManager().vanishPlayer(tabPlayer.get());
+
+        // Broadcast vanish update to other proxies
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
+            plugin.getMultiProxyManager().broadcastUpdate(tabPlayer.get());
+        }
     }
 
     public void unVanishPlayer(@NotNull Player player) {
@@ -86,5 +91,10 @@ public class VanishManager {
 
         plugin.getTabList().getVanishTabList().unVanishPlayer(tabPlayer.get());
         plugin.getScoreboardManager().unVanishPlayer(tabPlayer.get());
+
+        // Broadcast un-vanish update to other proxies
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
+            plugin.getMultiProxyManager().broadcastUpdate(tabPlayer.get());
+        }
     }
 }

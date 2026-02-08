@@ -112,6 +112,11 @@ public class VelocitabAPI {
         getUser(player).ifPresent(tabPlayer -> {
             tabPlayer.setCustomName(name);
             plugin.getTabList().updateDisplayName(tabPlayer);
+            
+            // Broadcast custom name update to other proxies
+            if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
+                plugin.getMultiProxyManager().broadcastUpdate(tabPlayer);
+            }
         });
     }
 
