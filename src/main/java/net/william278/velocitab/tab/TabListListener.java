@@ -163,6 +163,26 @@ public class TabListListener {
         plugin.getServer().getScheduler().buildTask(plugin, () -> plugin.getPlaceholderManager().unblockPlayer(joined.getUniqueId())).delay(10, TimeUnit.MILLISECONDS).schedule();
 
         tabList.loadPlayer(joined, group, justQuit.contains(joined.getUniqueId()) ? 400 : 500);
+
+        // Broadcast to other proxies after player is loaded
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
+            // Delay broadcast slightly to ensure player is fully loaded
+            plugin.getServer().getScheduler().buildTask(plugin, () -> {
+                tabList.getTabPlayer(joined).ifPresent(tabPlayer -> {
+                    if (event.getPreviousServer() == null) {
+                        // First join - broadcast join
+                        plugin.getMultiProxyManager().broadcastJoin(tabPlayer);
+                    } else {
+                        // Server switch - broadcast switch
+                        plugin.getMultiProxyManager().broadcastSwitch(
+                                tabPlayer,
+                                serverName,
+                                group
+                        );
+                    }
+                });
+            }).delay(600, TimeUnit.MILLISECONDS).schedule();
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -176,6 +196,13 @@ public class TabListListener {
             return;
         }
 
+        // Broadcast leave to other proxies before removing
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
+            tabList.getTabPlayer(event.getPlayer()).ifPresent(tabPlayer -> {
+                plugin.getMultiProxyManager().broadcastLeave(tabPlayer);
+            });
+        }
+
         // Remove the player from the tab list of all other players
         tabList.removePlayer(event.getPlayer());
         plugin.getPlaceholderManager().clearPlaceholders(event.getPlayer().getUniqueId());
@@ -186,6 +213,12 @@ public class TabListListener {
     private void proxyReload(@NotNull ProxyReloadEvent event) {
         plugin.loadConfigs();
         tabList.reloadUpdate();
+        
+        // Re-broadcast all local players after reload
+        if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
+            plugin.getMultiProxyManager().broadcastAllLocalPlayers();
+        }
+        
         plugin.log("Velocitab has been reloaded!");
     }
 
