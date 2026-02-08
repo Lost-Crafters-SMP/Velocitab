@@ -166,7 +166,8 @@ public class TabListListener {
 
         // Broadcast to other proxies after player is loaded
         if (plugin.getSettings().isMultiProxyEnabled() && plugin.getMultiProxyManager() != null) {
-            // Delay broadcast slightly to ensure player is fully loaded
+            // Delay broadcast to ensure player is fully loaded with all data (placeholders, team name, etc.)
+            // 600ms accounts for the 500ms loadPlayer delay plus extra buffer for placeholder resolution
             plugin.getServer().getScheduler().buildTask(plugin, () -> {
                 tabList.getTabPlayer(joined).ifPresent(tabPlayer -> {
                     if (event.getPreviousServer() == null) {

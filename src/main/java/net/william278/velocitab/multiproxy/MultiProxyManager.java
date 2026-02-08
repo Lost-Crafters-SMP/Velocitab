@@ -150,11 +150,15 @@ public class MultiProxyManager {
      * Check for stale proxies that haven't sent a heartbeat recently
      * and purge their players from the registry.
      * Also cleans up old message timestamps to prevent memory growth.
+     * <p>
+     * This method runs every 15 seconds (heartbeat interval) to:
+     * - Remove proxies that haven't sent a heartbeat in 60 seconds
+     * - Remove message timestamps older than 5 minutes to prevent unbounded growth
      */
     private void checkStaleProxies() {
         final long now = System.currentTimeMillis();
         
-        // Check for stale proxies
+        // Check for stale proxies (no heartbeat in 60 seconds)
         proxyHeartbeats.entrySet().removeIf(entry -> {
             final String proxyId = entry.getKey();
             final long lastHeartbeat = entry.getValue();
@@ -166,7 +170,7 @@ public class MultiProxyManager {
             return false;
         });
         
-        // Clean up old message timestamps (older than 5 minutes)
+        // Clean up message timestamps older than 5 minutes to prevent memory growth
         messageTimestamps.entrySet().removeIf(entry -> {
             final long timestamp = entry.getValue();
             return now - timestamp > 300_000; // 5 minutes
