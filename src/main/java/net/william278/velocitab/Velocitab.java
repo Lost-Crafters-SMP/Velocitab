@@ -43,6 +43,7 @@ import net.william278.velocitab.config.Settings;
 import net.william278.velocitab.config.TabGroupsManager;
 import net.william278.velocitab.hook.Hook;
 import net.william278.velocitab.hook.LuckPermsHook;
+import net.william278.velocitab.multiproxy.RemotePlayerRegistry;
 import net.william278.velocitab.packet.PacketEventManager;
 import net.william278.velocitab.packet.ScoreboardManager;
 import net.william278.velocitab.placeholder.PlaceholderManager;
@@ -87,6 +88,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
     private PacketEventManager packetEventManager;
     private PluginMessageAPI pluginMessageAPI;
     private PlaceholderManager placeholderManager;
+    private RemotePlayerRegistry remotePlayerRegistry;
     @Setter
     private Toilet toilet;
 
@@ -104,6 +106,7 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
         loadHooks();
         preparePlaceholderManager();
         prepareVanishManager();
+        prepareRemotePlayerRegistry();
         prepareScoreboard();
         registerCommands();
         registerMetrics();
@@ -135,6 +138,12 @@ public class Velocitab implements ConfigProvider, ScoreboardProvider, LoggerProv
 
     private void prepareVanishManager() {
         this.vanishManager = new VanishManager(this);
+    }
+
+    private void prepareRemotePlayerRegistry() {
+        // Initialize the registry for multi-proxy support
+        // In future phases, this will be conditional based on multiProxyEnabled setting
+        this.remotePlayerRegistry = new RemotePlayerRegistry();
     }
 
     private void prepareChannelManager() {
