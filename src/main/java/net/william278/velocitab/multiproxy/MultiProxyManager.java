@@ -450,7 +450,7 @@ public class MultiProxyManager {
         final boolean wasVanished = remotePlayer.isVanished();
         final String oldTeamName = remotePlayer.getTeamName(plugin);
 
-        // Update the player's properties
+        // Update the player's properties (including vanish state)
         remotePlayer.setTeamName(message.teamName());
         remotePlayer.setPrefix(message.prefix());
         remotePlayer.setSuffix(message.suffix());
@@ -463,14 +463,15 @@ public class MultiProxyManager {
         registry.updateRemotePlayer(remotePlayer);
 
         // If vanish state changed, handle visibility
+        // Note: vanish state is already updated above, so team operations see the new state
         if (wasVanished != message.vanished()) {
             if (message.vanished()) {
+                // Player is now vanished - remove from TAB and remove team
                 plugin.getTabList().removeRemoteEntry(message.playerUuid());
-                // Also remove team when vanishing
                 plugin.getScoreboardManager().removeRemoteTeam(remotePlayer);
             } else {
+                // Player is now visible - add to TAB and create team
                 plugin.getTabList().addRemoteEntry(remotePlayer);
-                // Re-create team when unvanishing
                 plugin.getScoreboardManager().createRemoteTeam(remotePlayer);
             }
         } else {

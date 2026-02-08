@@ -542,13 +542,15 @@ public class ScoreboardManager {
         final UpdateTeamsPacket packet = UpdateTeamsPacket.removeTeam(plugin, teamName);
         final boolean isNameTagEmpty = remote.getGroup().nametag().isEmpty();
 
-        // Send to all players
-        plugin.getServer().getAllPlayers().forEach(player -> {
-            if (player.isActive()) {
-                sendPacket(player, packet, isNameTagEmpty);
-                trackedTeams.remove(player.getUniqueId(), teamName);
-            }
-        });
+        // Send to all local players in the same group (matching createRemoteTeam logic)
+        remote.getGroup().registeredServers(plugin).forEach(server ->
+                server.getPlayersConnected().forEach(player -> {
+                    if (player.isActive()) {
+                        sendPacket(player, packet, isNameTagEmpty);
+                        trackedTeams.remove(player.getUniqueId(), teamName);
+                    }
+                })
+        );
     }
 
     /**
