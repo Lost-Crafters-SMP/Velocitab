@@ -277,10 +277,14 @@ public class MultiProxyManager {
             return;
         }
 
+        // Check for null group name
+        if (message.groupName() == null) {
+            logger.warn("Received remote join with null group name for player: {}", message.playerName());
+            return;
+        }
+
         // Resolve the group
-        final Optional<Group> groupOpt = plugin.getTabGroupsManager().getGroups().stream()
-                .filter(g -> g.name().equals(message.groupName()))
-                .findFirst();
+        final Optional<Group> groupOpt = plugin.getTabGroupsManager().getGroup(message.groupName());
 
         if (groupOpt.isEmpty()) {
             logger.warn("Received remote join for unknown group: {}", message.groupName());
@@ -354,10 +358,14 @@ public class MultiProxyManager {
             return;
         }
 
+        // Check for null group name
+        if (message.groupName() == null) {
+            logger.warn("Received remote switch with null group name for player: {}", message.playerName());
+            return;
+        }
+
         // Resolve the new group
-        final Optional<Group> groupOpt = plugin.getTabGroupsManager().getGroups().stream()
-                .filter(g -> g.name().equals(message.groupName()))
-                .findFirst();
+        final Optional<Group> groupOpt = plugin.getTabGroupsManager().getGroup(message.groupName());
 
         if (groupOpt.isEmpty()) {
             logger.warn("Received remote switch for unknown group: {}", message.groupName());
