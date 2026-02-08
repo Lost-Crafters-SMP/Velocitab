@@ -324,6 +324,9 @@ public class MultiProxyManager {
         // Add to local players' TAB lists
         plugin.getTabList().addRemoteEntry(remotePlayer);
 
+        // Create scoreboard team for the remote player
+        plugin.getScoreboardManager().createRemoteTeam(remotePlayer);
+
         logger.debug("Remote player joined: {} from proxy {}", message.playerName(), message.sourceProxyId());
     }
 
@@ -336,11 +339,17 @@ public class MultiProxyManager {
             return;
         }
 
+        // Get the remote player before removing
+        final Optional<RemoteTabPlayer> remoteOpt = registry.getRemotePlayer(message.playerUuid());
+
         // Remove from registry
         registry.removeRemotePlayer(message.playerUuid());
 
         // Remove from local players' TAB lists
         plugin.getTabList().removeRemoteEntry(message.playerUuid());
+
+        // Remove scoreboard team for the remote player
+        remoteOpt.ifPresent(remote -> plugin.getScoreboardManager().removeRemoteTeam(remote));
 
         logger.debug("Remote player left: {} from proxy {}", message.playerName(), message.sourceProxyId());
     }
@@ -384,6 +393,9 @@ public class MultiProxyManager {
         final Group newGroup = groupOpt.get();
         final RemoteTabPlayer remotePlayer = existingOpt.get();
 
+        // Store old team name to check if it changed
+        final String oldTeamName = remotePlayer.getTeamName(plugin);
+
         // Update the player's properties
         remotePlayer.setServerName(message.serverName());
         remotePlayer.setGroup(newGroup);
@@ -401,6 +413,12 @@ public class MultiProxyManager {
         // Remove and re-add to re-evaluate group visibility
         plugin.getTabList().removeRemoteEntry(message.playerUuid());
         plugin.getTabList().addRemoteEntry(remotePlayer);
+
+        // Update scoreboard team if team name changed
+        final String newTeamName = remotePlayer.getTeamName(plugin);
+        if (oldTeamName != null && !oldTeamName.equals(newTeamName)) {
+            plugin.getScoreboardManager().updateRemoteTeam(remotePlayer);
+        }
 
         logger.debug("Remote player switched: {} to server {}", message.playerName(), message.serverName());
     }
@@ -429,6 +447,7 @@ public class MultiProxyManager {
 
         final RemoteTabPlayer remotePlayer = existingOpt.get();
         final boolean wasVanished = remotePlayer.isVanished();
+        final String oldTeamName = remotePlayer.getTeamName(plugin);
 
         // Update the player's properties
         remotePlayer.setTeamName(message.teamName());
@@ -446,12 +465,22 @@ public class MultiProxyManager {
         if (wasVanished != message.vanished()) {
             if (message.vanished()) {
                 plugin.getTabList().removeRemoteEntry(message.playerUuid());
+                // Also remove team when vanishing
+                plugin.getScoreboardManager().removeRemoteTeam(remotePlayer);
             } else {
                 plugin.getTabList().addRemoteEntry(remotePlayer);
+                // Re-create team when unvanishing
+                plugin.getScoreboardManager().createRemoteTeam(remotePlayer);
             }
         } else {
             // Otherwise just update the entry
             plugin.getTabList().updateRemoteEntry(remotePlayer);
+
+            // Update team if team name or nametag changed
+            final String newTeamName = remotePlayer.getTeamName(plugin);
+            if (oldTeamName != null && !oldTeamName.equals(newTeamName)) {
+                plugin.getScoreboardManager().updateRemoteTeam(remotePlayer);
+            }
         }
 
         logger.debug("Remote player updated: {}", message.playerName());

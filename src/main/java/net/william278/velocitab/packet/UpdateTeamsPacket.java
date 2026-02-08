@@ -140,11 +140,60 @@ public class UpdateTeamsPacket implements MinecraftPacket {
                 .mode(UpdateMode.REMOVE_TEAM);
     }
 
+    /**
+     * Create a team packet for a remote player using pre-resolved prefix/suffix strings.
+     * Used for multi-proxy synchronization where prefix/suffix are already computed on origin proxy.
+     *
+     * @param plugin      The plugin instance
+     * @param teamName    The team name (pre-computed on origin proxy)
+     * @param prefix      The prefix string (pre-computed on origin proxy)
+     * @param suffix      The suffix string (pre-computed on origin proxy)
+     * @param collisions  Whether collisions are enabled for this team
+     * @param username    The username of the remote player
+     * @return UpdateTeamsPacket configured for remote player
+     */
+    @NotNull
+    protected static UpdateTeamsPacket createRemoteTeam(@NotNull Velocitab plugin, @NotNull String teamName,
+                                                        @Nullable String prefix, @Nullable String suffix,
+                                                        boolean collisions, @NotNull String username) {
+        final Component prefixComponent = prefix != null && !prefix.isEmpty()
+                ? plugin.getFormatter().deserialize(prefix)
+                : Component.empty();
+        final Component suffixComponent = suffix != null && !suffix.isEmpty()
+                ? plugin.getFormatter().deserialize(suffix)
+                : Component.empty();
+
+        final boolean hasNametag = !plugin.getSettings().isRemoveNametags() ||
+                (prefix != null && !prefix.isEmpty()) || (suffix != null && !suffix.isEmpty());
+
+        final int color = getLastColorFromString(prefix, plugin);
+
+        return new UpdateTeamsPacket(plugin)
+                .teamName(teamName)
+                .mode(UpdateMode.CREATE_TEAM)
+                .displayName(Component.empty())
+                .friendlyFlags(List.of(FriendlyFlag.CAN_HURT_FRIENDLY))
+                .nametagVisibility(hasNametag ? NametagVisibility.ALWAYS : NametagVisibility.NEVER)
+                .collisionRule(collisions ? CollisionRule.ALWAYS : CollisionRule.NEVER)
+                .color(color)
+                .prefix(prefixComponent)
+                .suffix(suffixComponent)
+                .entities(List.of(username));
+    }
+
     public static int getLastColor(@NotNull TabPlayer tabPlayer, @Nullable String text, @NotNull Velocitab plugin) {
         if (tabPlayer.getTeamColor() != null) {
             text = "&" + tabPlayer.getTeamColor().colorChar();
         }
 
+        return getLastColorFromString(text, plugin);
+    }
+
+    /**
+     * Extract the last color code from a string.
+     * Used for remote players where we don't have a TabPlayer object.
+     */
+    private static int getLastColorFromString(@Nullable String text, @NotNull Velocitab plugin) {
         if (text == null) {
             return 15;
         }

@@ -298,6 +298,7 @@ public class PlayerTabList {
         }
         final ScoreboardManager scoreboardManager = plugin.getScoreboardManager();
         scoreboardManager.resendAllTeams(tabPlayer);
+        scoreboardManager.resendRemoteTeams(tabPlayer);
         updateSorting(tabPlayer, false);
         fixDuplicateEntries(joined);
         // Fire event without listening for result

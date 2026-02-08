@@ -473,4 +473,150 @@ public class ScoreboardManager {
         }
     }
 
+    /**
+     * Create a scoreboard team for a remote player and send to all local players in the same group.
+     * The team name, prefix, and suffix are pre-computed on the origin proxy.
+     *
+     * @param remote The remote player for whom to create the team
+     */
+    public void createRemoteTeam(@NotNull net.william278.velocitab.multiproxy.RemoteTabPlayer remote) {
+        if (!teams || !plugin.getSettings().isMultiProxyEnabled() || !plugin.getSettings().isSendScoreboardPackets()) {
+            return;
+        }
+
+        final String teamName = remote.getTeamName(plugin);
+        if (teamName == null || teamName.isEmpty()) {
+            return;
+        }
+
+        // Track this team for the remote player
+        createdTeams.put(remote.getUniqueId(), teamName);
+        sortedTeams.addTeam(teamName);
+
+        // Create the packet using pre-resolved prefix/suffix from remote player
+        final UpdateTeamsPacket packet = UpdateTeamsPacket.createRemoteTeam(
+                plugin,
+                teamName,
+                remote.getPrefix(),
+                remote.getSuffix(),
+                remote.getGroup().collisions(),
+                remote.getUsername()
+        );
+
+        // Send to all local players in the same group
+        final boolean isNameTagEmpty = remote.getGroup().nametag().isEmpty();
+        remote.getGroup().registeredServers(plugin).forEach(server ->
+                server.getPlayersConnected().forEach(player -> {
+                    if (!player.isActive()) {
+                        return;
+                    }
+
+                    // Check vanish status
+                    if (remote.isVanished() && !plugin.getVanishManager().canSee(player.getUsername(), remote.getUsername())) {
+                        return;
+                    }
+
+                    sendPacket(player, packet, isNameTagEmpty);
+                    trackedTeams.put(player.getUniqueId(), teamName);
+                })
+        );
+    }
+
+    /**
+     * Remove a remote player's team from all local players.
+     *
+     * @param remote The remote player whose team should be removed
+     */
+    public void removeRemoteTeam(@NotNull net.william278.velocitab.multiproxy.RemoteTabPlayer remote) {
+        if (!teams || !plugin.getSettings().isMultiProxyEnabled()) {
+            return;
+        }
+
+        final String teamName = createdTeams.remove(remote.getUniqueId());
+        if (teamName == null) {
+            return;
+        }
+
+        removeSortedTeam(teamName);
+
+        final UpdateTeamsPacket packet = UpdateTeamsPacket.removeTeam(plugin, teamName);
+        final boolean isNameTagEmpty = remote.getGroup().nametag().isEmpty();
+
+        // Send to all players
+        plugin.getServer().getAllPlayers().forEach(player -> {
+            if (player.isActive()) {
+                sendPacket(player, packet, isNameTagEmpty);
+                trackedTeams.remove(player.getUniqueId(), teamName);
+            }
+        });
+    }
+
+    /**
+     * Update a remote player's team (e.g., after server switch or prefix change).
+     * Removes the old team and creates a new one.
+     *
+     * @param remote The remote player whose team should be updated
+     */
+    public void updateRemoteTeam(@NotNull net.william278.velocitab.multiproxy.RemoteTabPlayer remote) {
+        if (!teams || !plugin.getSettings().isMultiProxyEnabled() || !plugin.getSettings().isSendScoreboardPackets()) {
+            return;
+        }
+
+        // Remove old team if it exists
+        final String oldTeamName = createdTeams.get(remote.getUniqueId());
+        if (oldTeamName != null) {
+            removeRemoteTeam(remote);
+        }
+
+        // Create new team
+        createRemoteTeam(remote);
+    }
+
+    /**
+     * Send all remote player teams to a joining local player.
+     * Called when a local player joins to ensure they see correctly sorted remote players.
+     *
+     * @param tabPlayer The local player who is joining
+     */
+    public void resendRemoteTeams(@NotNull TabPlayer tabPlayer) {
+        if (!teams || !plugin.getSettings().isMultiProxyEnabled() || !plugin.getSettings().isSendScoreboardPackets()) {
+            return;
+        }
+
+        final Player player = tabPlayer.getPlayer();
+        if (!player.isActive()) {
+            return;
+        }
+
+        // Get all remote players in the same group
+        final java.util.List<net.william278.velocitab.multiproxy.RemoteTabPlayer> remotePlayers =
+                tabPlayer.getGroup().getRemotePlayers(plugin, tabPlayer);
+
+        // Send team packet for each remote player
+        remotePlayers.forEach(remote -> {
+            final String teamName = remote.getTeamName(plugin);
+            if (teamName == null || teamName.isEmpty()) {
+                return;
+            }
+
+            // Check vanish status
+            if (remote.isVanished() && !plugin.getVanishManager().canSee(player.getUsername(), remote.getUsername())) {
+                return;
+            }
+
+            final UpdateTeamsPacket packet = UpdateTeamsPacket.createRemoteTeam(
+                    plugin,
+                    teamName,
+                    remote.getPrefix(),
+                    remote.getSuffix(),
+                    remote.getGroup().collisions(),
+                    remote.getUsername()
+            );
+
+            final boolean isNameTagEmpty = remote.getGroup().nametag().isEmpty();
+            sendPacket(player, packet, isNameTagEmpty);
+            trackedTeams.put(player.getUniqueId(), teamName);
+        });
+    }
+
 }
