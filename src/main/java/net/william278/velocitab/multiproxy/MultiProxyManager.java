@@ -310,12 +310,14 @@ public class MultiProxyManager {
         final String teamName = player.getTeamName(plugin);
         final String customName = player.getCustomName().orElse("");
 
+        // Use a more robust delimiter that's unlikely to appear in player data
+        final char delimiter = '\u001F'; // ASCII Unit Separator
         return new StringBuilder()
-                .append(teamName != null ? teamName : "").append('|')
-                .append(nametag.prefix() != null ? nametag.prefix() : "").append('|')
-                .append(nametag.suffix() != null ? nametag.suffix() : "").append('|')
-                .append(customName).append('|')
-                .append(player.isVanished()).append('|')
+                .append(teamName != null ? teamName : "").append(delimiter)
+                .append(nametag.prefix() != null ? nametag.prefix() : "").append(delimiter)
+                .append(nametag.suffix() != null ? nametag.suffix() : "").append(delimiter)
+                .append(customName).append(delimiter)
+                .append(player.isVanished()).append(delimiter)
                 .append(player.getLatency())
                 .toString();
     }
