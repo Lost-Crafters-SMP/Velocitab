@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -324,6 +325,9 @@ public class MultiProxyManager {
         // Add to local players' TAB lists
         plugin.getTabList().addRemoteEntry(remotePlayer);
 
+        // Create scoreboard team for the remote player
+        plugin.getScoreboardManager().createRemoteTeam(remotePlayer);
+
         logger.debug("Remote player joined: {} from proxy {}", message.playerName(), message.sourceProxyId());
     }
 
@@ -336,11 +340,17 @@ public class MultiProxyManager {
             return;
         }
 
+        // Get the remote player before removing
+        final Optional<RemoteTabPlayer> remoteOpt = registry.getRemotePlayer(message.playerUuid());
+
         // Remove from registry
         registry.removeRemotePlayer(message.playerUuid());
 
         // Remove from local players' TAB lists
         plugin.getTabList().removeRemoteEntry(message.playerUuid());
+
+        // Remove scoreboard team for the remote player
+        remoteOpt.ifPresent(remote -> plugin.getScoreboardManager().removeRemoteTeam(remote));
 
         logger.debug("Remote player left: {} from proxy {}", message.playerName(), message.sourceProxyId());
     }
@@ -384,6 +394,9 @@ public class MultiProxyManager {
         final Group newGroup = groupOpt.get();
         final RemoteTabPlayer remotePlayer = existingOpt.get();
 
+        // Store old team name to check if it changed
+        final String oldTeamName = remotePlayer.getTeamName(plugin);
+
         // Update the player's properties
         remotePlayer.setServerName(message.serverName());
         remotePlayer.setGroup(newGroup);
@@ -401,6 +414,12 @@ public class MultiProxyManager {
         // Remove and re-add to re-evaluate group visibility
         plugin.getTabList().removeRemoteEntry(message.playerUuid());
         plugin.getTabList().addRemoteEntry(remotePlayer);
+
+        // Update scoreboard team if team name changed
+        final String newTeamName = remotePlayer.getTeamName(plugin);
+        if (!Objects.equals(oldTeamName, newTeamName)) {
+            plugin.getScoreboardManager().updateRemoteTeam(remotePlayer);
+        }
 
         logger.debug("Remote player switched: {} to server {}", message.playerName(), message.serverName());
     }
@@ -429,8 +448,9 @@ public class MultiProxyManager {
 
         final RemoteTabPlayer remotePlayer = existingOpt.get();
         final boolean wasVanished = remotePlayer.isVanished();
+        final String oldTeamName = remotePlayer.getTeamName(plugin);
 
-        // Update the player's properties
+        // Update the player's properties (including vanish state)
         remotePlayer.setTeamName(message.teamName());
         remotePlayer.setPrefix(message.prefix());
         remotePlayer.setSuffix(message.suffix());
@@ -443,15 +463,26 @@ public class MultiProxyManager {
         registry.updateRemotePlayer(remotePlayer);
 
         // If vanish state changed, handle visibility
+        // Note: vanish state is already updated above, so team operations see the new state
         if (wasVanished != message.vanished()) {
             if (message.vanished()) {
+                // Player is now vanished - remove from TAB and remove team
                 plugin.getTabList().removeRemoteEntry(message.playerUuid());
+                plugin.getScoreboardManager().removeRemoteTeam(remotePlayer);
             } else {
+                // Player is now visible - add to TAB and create team
                 plugin.getTabList().addRemoteEntry(remotePlayer);
+                plugin.getScoreboardManager().createRemoteTeam(remotePlayer);
             }
         } else {
             // Otherwise just update the entry
             plugin.getTabList().updateRemoteEntry(remotePlayer);
+
+            // Update team if team name or nametag changed
+            final String newTeamName = remotePlayer.getTeamName(plugin);
+            if (!Objects.equals(oldTeamName, newTeamName)) {
+                plugin.getScoreboardManager().updateRemoteTeam(remotePlayer);
+            }
         }
 
         logger.debug("Remote player updated: {}", message.playerName());
